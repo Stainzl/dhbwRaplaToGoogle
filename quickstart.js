@@ -2,10 +2,10 @@ var fs = require('fs');
 var readline = require('readline');
 var google = require('googleapis');
 var googleAuth = require('google-auth-library');
-var jsonQuery = require('json-query');
 var request = require('request');
 var cheerio = require('cheerio');
 var dateFormat = require('dateformat');
+var _ = require('lodash');
 
 // If modifying these scopes, delete your previously saved credentials
 // at ~/.credentials/calendar-nodejs-quickstart.json
@@ -15,7 +15,9 @@ var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
 var TOKEN_PATH = TOKEN_DIR + 'calendar-nodejs-quickstart.json';
 // Load client secrets from a local file.
 
-function loadTable(response, auth) {
+var same = [];
+
+function loadTable(responseFromG, auth) {
     request({
         uri: "https://rapla.dhbw-stuttgart.de/rapla?key=txB1FOi5xd1wUJBWuX8lJhGDUgtMSFmnKLgAG_NVMhC8Gu9-6yMIGKvQs4ec02Ag"
     }, function (error, response, body) {
@@ -39,14 +41,31 @@ function loadTable(response, auth) {
                     date[2] = dateObj.getFullYear();
                     date[1] = dateObj.getMonth()+1;
                     date[0] = dateObj.getDate();
-                    console.log("wöchentliches Event");
                 }
                 var starttime = timesplit[0].split(":");
                 var endtime = timesplit[1].split(":");
                 var start = new Date(date[2], date[1] - 1, date[0], starttime[0], starttime[1]);
                 var end = new Date(date[2], date[1] - 1, date[0], endtime[0], endtime[1]);
-                saveToG(this.children[4].children[0].children[0].children[3].children[0].data, start, end, auth);
+                saveToG(this.children[4].children[0].children[0].children[3].children[0].data, start, end, responseFromG, auth);
             });
+            console.log(same);
+            for(var i = 0; i < responseFromG.items.length; i++){
+                console.log("response", responseFromG.items[i].id);
+                if(same.indexOf(responseFromG.items[i].id)<0){
+                    var calendar = google.calendar("v3");
+                    console.log("Delete id",responseFromG.items[i].id);
+                    calendar.events.delete({
+                        auth: auth,
+                        calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
+                        eventId: responseFromG.items[i].id
+                    },function (error, response){
+                        if(error){
+                            console.log(error);
+                        }
+                        console.log("responseFromDelete",response)
+                    })
+                }
+            }
         }
         else {
             console.log(error)
@@ -56,11 +75,13 @@ function loadTable(response, auth) {
 
 function loadFromG(auth){
     var calendar = google.calendar("v3");
+    var date = new Date();
+    date.setDate(date.getDate() - date.getDay());
     calendar.events.list({
         auth: auth,
         calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
-        timeMin: (new Date()).toISOString(),
-        maxResults: 10,
+        timeMin: date.toISOString(),
+        maxResults: 500,
         singleEvents: true,
         orderBy: 'startTime'
     }, function(err, response) {
@@ -72,31 +93,44 @@ function loadFromG(auth){
     });
 }
 
-function saveToG(name, start, end, auth){
+function isInG(event, list){
+    //console.log(list.items);
+    console.log(_.filter(list.items, function (object) {
+        var evtStart = event.start.dateTime.split("+")[0];
+        var objStart = object.start.dateTime.split("+")[0];
+        var evtEnd = event.end.dateTime.split("+")[0];
+        var objEnd = object.end.dateTime.split("+")[0];
+        console.log(evtEnd.indexOf(objEnd), evtEnd, objEnd);
+        return event.summary === object.summary && evtEnd.indexOf(objEnd)>-1 && evtStart.indexOf(objStart)>-1;
+    }))
+}
+
+function saveToG(name, start, end, existing, auth){
     var calendar = google.calendar('v3');
     var event = {
         'summary': name,
         'start': {
-            'dateTime': dateFormat(start, "isoDateTime"),
+            'dateTime': start.toISOString(),
             'timeZone': 'Europe/Berlin'
         },
         'end': {
-            'dateTime': dateFormat(end, "isoDateTime"),
+            'dateTime': end.toISOString(),
             'timeZone': 'Europe/Berlin'
         }
     };
-    console.log(event);
-    calendar.events.insert({
-        auth: auth,
-        calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
-        resource: event
-    }, function(err, event) {
-        if (err) {
-            console.log('There was an error contacting the Calendar service: ' + err);
-            return;
-        }
-        console.log('Event created: %s', event.htmlLink);
-    });
+    if(!isInG(event, existing)) {
+        calendar.events.insert({
+            auth: auth,
+            calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
+            resource: event
+        }, function (err, event) {
+            if (err) {
+                console.log('There was an error contacting the Calendar service: ' + err);
+                return;
+            }
+            console.log('Event created: %s', event.htmlLink);
+        });
+    }
 }
 
 fs.readFile('client_secret.json', function processClientSecrets(err, content) {
@@ -190,28 +224,6 @@ function storeToken(token) {
  */
 function listEvents(auth) {
   var calendar = google.calendar('v3');
-  var event = {
-      'summary': 'Google I/O 2015',
-      'start': {
-          'dateTime': '2017-12-13T09:00:00-07:00',
-          'timeZone': 'Europe/Berlin'
-      },
-      'end': {
-          'dateTime': '2017-12-13T17:00:00-07:00',
-          'timeZone': 'Europe/Berlin'
-      }
-  };
-  /*calendar.events.insert({
-      auth: auth,
-      calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
-    resource: event
-  }, function(err, event) {
-      if (err) {
-          console.log('There was an error contacting the Calendar service: ' + err);
-          return;
-      }
-      console.log('Event created: %s', event.htmlLink);
-  });*/
   calendar.events.list({
     auth: auth,
     calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
