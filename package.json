@@ -4,8 +4,11 @@
   "description": "Collects the data from dhbw rapla and paste it to GoogleCalendar",
   "main": "index.js",
   "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "dateformat": "^3.0.2",
     "google-auth-library": "^0.12.0",
-    "googleapis": "^23.0.0"
+    "googleapis": "^23.0.0",
+    "json-query": "^2.2.2"
   },
   "devDependencies": {},
   "scripts": {
