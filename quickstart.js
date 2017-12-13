@@ -14,12 +14,17 @@ var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
     process.env.USERPROFILE) + '/.credentials/';
 var TOKEN_PATH = TOKEN_DIR + 'calendar-nodejs-quickstart.json';
 // Load client secrets from a local file.
+var CALENDAR_KEY = "txB1FOi5xd1wUJBWuX8lJhGDUgtMSFmnKLgAG_NVMhC8Gu9-6yMIGKvQs4ec02Ag";
 
 var same = [];
 
-function loadTable(responseFromG, auth) {
+function loadTable(responseFromG, start, auth) {
+    start.setDate(start.getDate() + 1);
+    var innerStart = start;
+    var url = "https://rapla.dhbw-stuttgart.de/rapla?key="+CALENDAR_KEY
+        +"&day="+start.getDate()+"&month="+(start.getMonth() + 1)+"&year="+start.getFullYear();
     request({
-        uri: "https://rapla.dhbw-stuttgart.de/rapla?key=txB1FOi5xd1wUJBWuX8lJhGDUgtMSFmnKLgAG_NVMhC8Gu9-6yMIGKvQs4ec02Ag"
+        uri: url
     }, function (error, response, body) {
         if (error === null) {
             var $ = cheerio.load(body);
@@ -28,19 +33,22 @@ function loadTable(responseFromG, auth) {
                 var datesplit = this.children[2].children[0].data.split(" ");
                 var date = [];
                 var timesplit = [];
-                if (datesplit[2] !== "wöchentlich") {
-                    date = datesplit[1].split(".");
-                    date[2] = "20"+date[2];
-                    timesplit = datesplit[2].split("-");
-                }
-                else{
+                if (datesplit[2] === "wöchentlich") {
                     timesplit = datesplit[1].split("-");
-                    var dateObj = new Date();
+                    var dateObj = new Date(innerStart);
                     var index = days.indexOf(datesplit[0]);
                     dateObj.setDate(dateObj.getDate() + (index - dateObj.getDay()));
                     date[2] = dateObj.getFullYear();
-                    date[1] = dateObj.getMonth()+1;
+                    date[1] = dateObj.getMonth() + 1;
                     date[0] = dateObj.getDate();
+                }
+                else if (datesplit[1] === "täglich"){
+                    return;
+                }
+                else {
+                    date = datesplit[1].split(".");
+                    date[2] = "20" + date[2];
+                    timesplit = datesplit[2].split("-");
                 }
                 var starttime = timesplit[0].split(":");
                 var endtime = timesplit[1].split(":");
@@ -48,9 +56,7 @@ function loadTable(responseFromG, auth) {
                 var end = new Date(date[2], date[1] - 1, date[0], endtime[0], endtime[1]);
                 saveToG(this.children[4].children[0].children[0].children[3].children[0].data, start, end, responseFromG, auth);
             });
-            console.log(same);
             for(var i = 0; i < responseFromG.items.length; i++){
-                console.log("response", responseFromG.items[i].id);
                 if(same.indexOf(responseFromG.items[i].id)<0){
                     var calendar = google.calendar("v3");
                     console.log("Delete id",responseFromG.items[i].id);
@@ -75,46 +81,63 @@ function loadTable(responseFromG, auth) {
 
 function loadFromG(auth){
     var calendar = google.calendar("v3");
-    var date = new Date();
-    date.setDate(date.getDate() - date.getDay());
-    calendar.events.list({
-        auth: auth,
-        calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
-        timeMin: date.toISOString(),
-        maxResults: 500,
-        singleEvents: true,
-        orderBy: 'startTime'
-    }, function(err, response) {
-        if (err) {
-            console.log('The API returned an error: ' + err);
-            return;
-        }
-        loadTable(response, auth);
-    });
+    var start = new Date();
+    start.setDate(start.getDate() - start.getDay()-7);
+    start.setHours(1, 0, 0, 0);
+    for(var i=0; i<12; i++) {
+        start.setDate(start.getDate() + (7));
+        (function (start) {
+            var end = new Date(start);
+            end.setDate(end.getDate() + 7);
+            calendar.events.list({
+                auth: auth,
+                calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
+                timeMin: start.toISOString(),
+                timeMax: end.toISOString(),
+                singleEvents: true,
+                orderBy: 'startTime'
+            }, function (err, response) {
+                if (err) {
+                    console.log('The API returned an error: ' + err);
+                    return;
+                }
+                loadTable(response, new Date(start), auth);
+            });
+        })(new Date(start));
+    }
 }
 
 function isInG(event, list){
-    //console.log(list.items);
-    console.log(_.filter(list.items, function (object) {
-        var evtStart = event.start.dateTime.split("+")[0];
-        var objStart = object.start.dateTime.split("+")[0];
-        var evtEnd = event.end.dateTime.split("+")[0];
-        var objEnd = object.end.dateTime.split("+")[0];
-        console.log(evtEnd.indexOf(objEnd), evtEnd, objEnd);
-        return event.summary === object.summary && evtEnd.indexOf(objEnd)>-1 && evtStart.indexOf(objStart)>-1;
-    }))
+    var filtered = _.filter(list.items, function (object) {
+        var evtStart = event.start.dateTime;//.split("+")[0];
+        var objStart = object.start.dateTime;//.split("+")[0];
+        var evtEnd = event.end.dateTime;//.split("+")[0];
+        var objEnd = object.end.dateTime;//.split("+")[0];
+        return event.summary === object.summary && evtStart === objStart && evtEnd === objEnd;
+    });
+    if(filtered.length === 1){
+        same.push(filtered[0].id);
+        return true;
+    }
+    return false;
 }
 
 function saveToG(name, start, end, existing, auth){
     var calendar = google.calendar('v3');
+    start.setTime(start.getTime() + 60*60*1000);
+    var startStr = start.toISOString();
+    startStr = startStr.substring(0, startStr.length-5);
+    end.setTime(end.getTime() + 60*60*1000);
+    var endStr = end.toISOString();
+    endStr = endStr.substring(0, startStr.length);
     var event = {
         'summary': name,
         'start': {
-            'dateTime': start.toISOString(),
+            'dateTime': startStr+"+01:00",
             'timeZone': 'Europe/Berlin'
         },
         'end': {
-            'dateTime': end.toISOString(),
+            'dateTime': endStr+"+01:00",
             'timeZone': 'Europe/Berlin'
         }
     };
