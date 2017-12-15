@@ -133,6 +133,7 @@ function saveToG(name, start, end, existing, auth){
     var event = {
         'summary': name,
         'location': 'Rotebühlplatz 41, Rotebühlpl., Stuttgart, Deutschland',
+        'sendNotifications': 'true',
         'start': {
             'dateTime': startStr+"+01:00",
             'timeZone': 'Europe/Berlin'
