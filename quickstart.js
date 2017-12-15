@@ -126,18 +126,16 @@ function saveToG(name, start, end, existing, auth){
     end.setTime(end.getTime() + 60*60*1000);
     var endStr = end.toISOString();
     endStr = endStr.substring(0, startStr.length);
-    var event = {
-        'summary': name,
-        'location': 'Rotebühlplatz 41, Rotebühlpl., Stuttgart, Deutschland',
-        'sendNotifications': 'true',
-        'start': {
-            'dateTime': startStr+"+01:00",
-            'timeZone': 'Europe/Berlin'
-        },
-        'end': {
-            'dateTime': endStr+"+01:00",
-            'timeZone': 'Europe/Berlin'
-        }
+    var event = {};
+    event = Object.assign(event, config.event);
+    event.summary = name;
+    event.start = {
+        'dateTime': startStr+"+01:00",
+        'timeZone': 'Europe/Berlin'
+    };
+    event.end = {
+        'dateTime': endStr+"+01:00",
+        'timeZone': 'Europe/Berlin'
     };
     if(!isInG(event, existing)) {
         calendar.events.insert({
