@@ -1,6 +1,6 @@
 {
   "name": "dhbwinf17ccal",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Collects the data from dhbw rapla and paste it to GoogleCalendar",
   "main": "index.js",
   "dependencies": {
