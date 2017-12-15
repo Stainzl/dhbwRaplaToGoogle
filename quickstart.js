@@ -16,11 +16,12 @@ var TOKEN_PATH = TOKEN_DIR + 'calendar-nodejs-quickstart.json';
 var CALENDAR_KEY = "txB1FOi5xd1wUJBWuX8lJhGDUgtMSFmnKLgAG_NVMhC8Gu9-6yMIGKvQs4ec02Ag";
 
 var same = [];
+var config = {};
 
 function loadTable(responseFromG, start, auth) {
     start.setDate(start.getDate() + 1);
     var innerStart = start;
-    var url = "https://rapla.dhbw-stuttgart.de/rapla?key="+CALENDAR_KEY
+    var url = "https://rapla.dhbw-stuttgart.de/rapla?key="+config.calendar_key
         +"&day="+start.getDate()+"&month="+(start.getMonth() + 1)+"&year="+start.getFullYear();
     request({
         uri: url
@@ -61,7 +62,7 @@ function loadTable(responseFromG, start, auth) {
                     console.log("Delete id",responseFromG.items[i].id);
                     calendar.events.delete({
                         auth: auth,
-                        calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
+                        calendarId: config.g_cal,
                         eventId: responseFromG.items[i].id
                     },function (error, response){
                         if(error){
@@ -83,14 +84,14 @@ function loadFromG(auth){
     var start = new Date();
     start.setDate(start.getDate() - start.getDay()-7);
     start.setHours(1, 0, 0, 0);
-    for(var i=0; i<12; i++) {
+    for(var i=0; i<config.weeks; i++) {
         start.setDate(start.getDate() + (7));
         (function (start) {
             var end = new Date(start);
             end.setDate(end.getDate() + 7);
             calendar.events.list({
                 auth: auth,
-                calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
+                calendarId: config.g_cal,
                 timeMin: start.toISOString(),
                 timeMax: end.toISOString(),
                 singleEvents: true,
@@ -143,7 +144,7 @@ function saveToG(name, start, end, existing, auth){
     if(!isInG(event, existing)) {
         calendar.events.insert({
             auth: auth,
-            calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
+            calendarId: config.g_cal,
             resource: event
         }, function (err, event) {
             if (err) {
@@ -162,7 +163,15 @@ fs.readFile('client_secret.json', function processClientSecrets(err, content) {
   }
   // Authorize a client with the loaded credentials, then call the
   // Google Calendar API.
-  authorize(JSON.parse(content), loadFromG);
+    var secret = JSON.parse(content);
+    fs.readFile('config.json', function (err, content) {
+        if(err) {
+            console.log('Error loading config: ' + err);
+            return;
+        }
+        config = JSON.parse(content);
+        authorize(secret, loadFromG);
+    });
 });
 
 /**
@@ -248,7 +257,7 @@ function listEvents(auth) {
   var calendar = google.calendar('v3');
   calendar.events.list({
     auth: auth,
-    calendarId: '666obp6ro6slnc0346ol54vook@group.calendar.google.com',
+    calendarId: config.gcal,
     timeMin: (new Date()).toISOString(),
     maxResults: 10,
     singleEvents: true,
