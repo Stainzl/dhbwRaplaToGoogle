@@ -1,0 +1,9 @@
+{
+  "calendar_key": "",
+  "g_cal": "@group.calendar.google.com",
+  "weeks": 12,
+  "event": {
+    "location": "Rotebühlplatz 41, Rotebühlpl., Stuttgart, Deutschland",
+    "sendNotifications": "true"
+  }
+}
