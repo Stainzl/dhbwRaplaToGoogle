@@ -4,7 +4,6 @@ var google = require('googleapis');
 var googleAuth = require('google-auth-library');
 var request = require('request');
 var cheerio = require('cheerio');
-var dateFormat = require('dateformat');
 var _ = require('lodash');
 
 // If modifying these scopes, delete your previously saved credentials
@@ -109,11 +108,9 @@ function loadFromG(auth){
 
 function isInG(event, list){
     var filtered = _.filter(list.items, function (object) {
-        var evtStart = event.start.dateTime;//.split("+")[0];
-        var objStart = object.start.dateTime;//.split("+")[0];
-        var evtEnd = event.end.dateTime;//.split("+")[0];
-        var objEnd = object.end.dateTime;//.split("+")[0];
-        return event.summary === object.summary && evtStart === objStart && evtEnd === objEnd;
+        return event.summary === object.summary
+            && event.start.dateTime === object.start.dateTime
+            && event.end.dateTime === object.end.dateTime;
     });
     if(filtered.length === 1){
         same.push(filtered[0].id);
