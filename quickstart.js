@@ -12,8 +12,6 @@ var SCOPES = ['https://www.googleapis.com/auth/calendar'];
 var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
     process.env.USERPROFILE) + '/.credentials/';
 var TOKEN_PATH = TOKEN_DIR + 'calendar-nodejs-quickstart.json';
-// Load client secrets from a local file.
-var CALENDAR_KEY = "txB1FOi5xd1wUJBWuX8lJhGDUgtMSFmnKLgAG_NVMhC8Gu9-6yMIGKvQs4ec02Ag";
 
 var same = [];
 var config = {};
